@@ -37,17 +37,23 @@ contract BounceRouter is Ownable, IBounceRouter {
     }
 
     // add token to this contract
+    // @return amount of tokens deposited to this contract
     function _addLiquidity(
         address user,
         address token,
         uint256 amount
     ) internal returns (uint256) {
-        IERC20(token).safeTransferFrom(user, address(this), amount);
+        IERC20 _token = IERC20(token);
+
+        require(_token.allowance(msg.sender, address(this)) >= amount, 
+                    "User must approve amount");
+        
+        _token.safeTransferFrom(user, address(this), amount);
         return amount;
     }
 
     // approve token for spender, preempt for transfer out of this contract
-    function _approveToken(
+    function _tokenApproval(
         address token,
         address spender,
         uint256 amount
@@ -59,31 +65,42 @@ contract BounceRouter is Ownable, IBounceRouter {
         }
     }
 
+    /*
+     * Functions to bounce a token over to a vault 
+     */
     function Bounce(
         Bounce_Order memory order,
-        Bounce_Route[] calldata srcRoute,
-        Bounce_Route[] calldata dstRoute,
-        Bounce_Bridge calldata bridgeOptions
+        Bounce_Route[] calldata route,
+        //Bounce_Bridge calldata bridgeOptions,
+        address BounceReceiver,
+        uint256 relayerFee,
+        uint256 slippage
     ) external payable {
         // each order has to be user specific
         require(msg.sender == order.user);
 
         _bounce(
             order,
-            srcRoute,
-            dstRoute,
-            bridgeOptions
+            route,
+           // bridgeOptions,
+            BounceReceiver,
+            relayerFee,
+            slippage
         );
     }
 
     function _bounce(
         Bounce_Order memory order,
-        Bounce_Route[] calldata srcRoute,
-        Bounce_Route[] calldata dstRoute,
-        Bounce_Bridge calldata bridgeOptions
+        Bounce_Route[] calldata route,
+        //Bounce_Bridge calldata bridgeOptions,
+        address BounceReceiver,
+        uint256 relayerFee,
+        uint256 slippage
     ) private {
         // check we're in the right chain
         require(chainID == order.fromChainID);
+
+        // 1. add liquidity to bounce contract
 
         // get tokens that need to be bounnced over into this contract
         _addLiquidity(order.user, order.fromToken, order.fromTokenAmount);
@@ -92,6 +109,24 @@ contract BounceRouter is Ownable, IBounceRouter {
         // contract must have liquidity
         require(fromTokenBalance >= order.fromTokenAmount, "You do not have enough funds for this bounce");
 
+
+        // 2. approve token for connext bridge
+        _tokenApproval(order.fromToken, address(connext), order.fromTokenAmount);
+
+        // 3. connext bridge
+        bytes memory payload = "";
+
+        payload = abi.encode(order, route);
+
+        connext.xcall{value: relayerFee}(
+            order.toDomainID,       // Domain ID of the destination chain
+            BounceReceiver,         // address of the target contract
+            order.fromToken,        // address of the token contract
+            payable(msg.sender),    // address that can revert or forceLocal on destination
+            order.fromTokenAmount,  // amount of tokens to transfer
+            slippage,               // the maximum amount of slippage the user will accept in BPS
+            payload                 // the encoded calldata to send
+        );
 
     }
 }
