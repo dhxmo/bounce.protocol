@@ -4,3 +4,4 @@ out = 'out'
 libs = ['lib']
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
+rpc_endpoints = { goerli='https://rpc.ankr.com/eth_goerli', mumbai='https://rpc.ankr.com/polygon_mumbai', avax='https://rpc.ankr.com/avalanche', mainnet='https://rpc.ankr.com/eth', polygon='https://rpc.ankr.com/polygon' }

@@ -25,8 +25,8 @@ contract BounceReceiver is IXReceiver, Ownable {
     // _connext Address of deployed connext contract on present chain
     // _chainID ID of the present chain 
     // _domainID ID of the present chain for connext
-    constructor(IConnext _connext, uint256 _chainID, uint32 _domainID) {
-        connext = _connext;
+    constructor(address _connext, uint256 _chainID, uint32 _domainID) {
+        connext = IConnext(_connext);
         chainID = _chainID;
         domainID = _domainID;
     }

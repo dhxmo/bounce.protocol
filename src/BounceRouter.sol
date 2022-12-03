@@ -22,14 +22,14 @@ contract BounceRouter is Ownable, IBounce {
     // _connext Address of deployed connext contract on present chain
     // _chainID ID of the present chain
     // _domainID ID of the present chain for connext
-    constructor(IConnext _connext, uint256 _chainID, uint32 _domainID) {
-        connext = _connext;
+    constructor(address _connext, uint256 _chainID, uint32 _domainID) {
+        connext = IConnext(_connext);
         chainID = _chainID;
         domainID = _domainID;
     }
 
     /*
-     * Function to have an approved list of addresses to swap against
+     * Function to have an approved list of vaults
      */
     function addApprovedSwapAddress(address _address) public onlyOwner {
         approvedAddresses[_address] = true;
@@ -85,27 +85,7 @@ contract BounceRouter is Ownable, IBounce {
         // each order has to be user specific
         require(msg.sender == order.executor);
 
-        _bounceFrom(
-            order,
-            route,
-            bridge,
-            BounceReceiver,
-            relayerFee,
-            slippage
-        );
-    }
-
-    function _bounceFrom(
-        Bounce_Order calldata order,
-        Bounce_Route calldata route,
-        Bounce_Bridge calldata bridge,
-        // Bounce receiver contract to further execute the vault deposit
-        address BounceReceiver,
-        uint256 relayerFee,
-        uint256 slippage
-    ) private {
-
-        // TODO: use bridge options and add require checks
+       // TODO: use bridge options and add require checks
 
         // check we're in the right chain
         require(chainID == bridge.fromChainID);
@@ -135,6 +115,24 @@ contract BounceRouter is Ownable, IBounce {
         );
     }
 
+/*
+ *    function _bounceFrom(
+ *        Bounce_Order calldata order,
+ *        Bounce_Route calldata route,
+ *        Bounce_Bridge calldata bridge,
+ *        // Bounce receiver contract to further execute the vault deposit
+ *        address BounceReceiver,
+ *        uint256 relayerFee,
+ *        uint256 slippage
+ *    ) private {
+ *
+ *            }
+ */
+
+    /*
+     * Functions receiver bounce calls to send funds to wallet
+     */
+
     // BounceReceiver will call this function
     function BounceTo(Bounce_Order calldata order, Bounce_Route calldata route)
         external
@@ -155,7 +153,7 @@ contract BounceRouter is Ownable, IBounce {
 
         // vault address -- call deposit specific to the vault being considered
         (bool success, ) = (route.toAddress).call(route.payload);
-        require(success, "404");
+        require(success, "Deposit unsuccessful");
 
         return order.minToTokenAmount;
     }
