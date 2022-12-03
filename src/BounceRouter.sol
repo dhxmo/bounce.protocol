@@ -6,23 +6,25 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IConnext} from "@connext/nxtp-contracts/contracts/core/connext/interfaces/IConnext.sol";
 
-import "./interfaces/IBounceRouter.sol";
+import "./interfaces/IBounce.sol";
 
-contract BounceRouter is Ownable, IBounceRouter {
+contract BounceRouter is Ownable, IBounce {
     using SafeERC20 for IERC20;
 
     // The connext contract on the origin domain.
     IConnext public immutable connext;
 
     uint256 immutable chainID;
+    uint32 immutable domainID;
 
     mapping(address => bool) public approvedAddresses;
 
     // _connext Address of deployed connext contract on present chain
     // _chainID ID of the present chain
-    constructor(IConnext _connext, uint256 _chainID) {
+    constructor(IConnext _connext, uint256 _chainID, uint32 _domainID) {
         connext = _connext;
         chainID = _chainID;
+        domainID = _domainID;
     }
 
     /*
@@ -66,23 +68,26 @@ contract BounceRouter is Ownable, IBounceRouter {
     }
 
     /*
-     * Functions to bounce a token over to a vault 
+     * Functions to bounce a token over to Receiver bounce contract 
      */
-    function Bounce(
+    function BounceFrom(
         Bounce_Order memory order,
-        Bounce_Route[] calldata route,
-        //Bounce_Bridge calldata bridgeOptions,
+        Bounce_Route calldata route,
+        Bounce_Bridge calldata bridge,
         address BounceReceiver,
         uint256 relayerFee,
         uint256 slippage
-    ) external payable {
+    )   external 
+        override 
+        payable 
+        {
         // each order has to be user specific
-        require(msg.sender == order.user);
+        require(msg.sender == order.executor);
 
         _bounce(
             order,
             route,
-           // bridgeOptions,
+            bridge,
             BounceReceiver,
             relayerFee,
             slippage
@@ -91,42 +96,55 @@ contract BounceRouter is Ownable, IBounceRouter {
 
     function _bounce(
         Bounce_Order memory order,
-        Bounce_Route[] calldata route,
-        //Bounce_Bridge calldata bridgeOptions,
+        Bounce_Route calldata route,
+        Bounce_Bridge calldata bridge,
+        // Bounce receiver contract to further execute the vault deposit
         address BounceReceiver,
         uint256 relayerFee,
         uint256 slippage
     ) private {
         // check we're in the right chain
-        require(chainID == order.fromChainID);
+        require(chainID == bridge.fromChainID);
 
         // 1. add liquidity to bounce contract
 
-        // get tokens that need to be bounnced over into this contract
-        _addLiquidity(order.user, order.fromToken, order.fromTokenAmount);
-
-        uint256 fromTokenBalance = IERC20(order.fromToken).balanceOf(address(this));
+        _addLiquidity(order.executor, route.fromToken, route.fromTokenAmount); 
+        uint256 fromTokenBalance = IERC20(route.fromToken).balanceOf(address(this));
         // contract must have liquidity
-        require(fromTokenBalance >= order.fromTokenAmount, "You do not have enough funds for this bounce");
-
+        require(fromTokenBalance >= route.fromTokenAmount, "You do not have enough funds for this bounce");
 
         // 2. approve token for connext bridge
-        _tokenApproval(order.fromToken, address(connext), order.fromTokenAmount);
+        _tokenApproval(route.fromToken, address(connext), route.fromTokenAmount);
 
         // 3. connext bridge
         bytes memory payload = "";
-
         payload = abi.encode(order, route);
 
         connext.xcall{value: relayerFee}(
             order.toDomainID,       // Domain ID of the destination chain
             BounceReceiver,         // address of the target contract
-            order.fromToken,        // address of the token contract
+            route.fromToken,        // address of the token contract
             payable(msg.sender),    // address that can revert or forceLocal on destination
-            order.fromTokenAmount,  // amount of tokens to transfer
+            route.fromTokenAmount,  // amount of tokens to transfer
             slippage,               // the maximum amount of slippage the user will accept in BPS
             payload                 // the encoded calldata to send
         );
-
     }
+
+    function BounceTo(Bounce_Order memory order, Bounce_Route[] calldata route)
+        external
+        override
+        //returns (uint256)
+    {
+        //return _bounceTo(order, route);
+    }
+
+    /*
+     *function _bounceTo(
+     *    Bounce_Order memory order, 
+     *    Bounce_Route[] calldata route
+     *) private returns(uint256) {
+     *    return 1;    
+     *};
+     */
 }
