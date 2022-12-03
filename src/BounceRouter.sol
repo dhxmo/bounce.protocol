@@ -47,7 +47,7 @@ contract BounceRouter is Ownable, IBounce {
         IERC20 _token = IERC20(token);
 
         //require(_token.allowance(msg.sender, address(this)) >= amount, 
-                    "User must approve amount");
+        //            "User must approve amount");
         
         _token.transferFrom(user, address(this), amount);
         return amount;
@@ -74,8 +74,6 @@ contract BounceRouter is Ownable, IBounce {
     function BounceFrom(Order memory _order) external override payable returns(bytes32)
         {
             // 1. add liquidity to bounce contract
-            
-            IERC20(_order.fromToken).approve(address(this), _order.fromTokenAmount);
             _addLiquidity(msg.sender, _order.fromToken, _order.fromTokenAmount); 
 
             uint256 fromTokenBalance = IERC20(_order.fromToken).balanceOf(address(this));

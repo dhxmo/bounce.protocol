@@ -17,6 +17,8 @@ contract TestConstants {
 
     address constant weth_goerli = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
     IERC20 wethGoerli = IERC20(weth_goerli);
+    
+    address constant test_goerli = 0x7ea6eA49B0b0Ae9c5db7907d139D9Cd3439862a1;
 
 /*
  * Mumbai
@@ -27,6 +29,7 @@ contract TestConstants {
 
     address constant weth_mumbai = 0xFD2AB41e083c75085807c4A65C0A14FDD93d55A9;
     address constant tWeth_mumbai = 0x1E5341E4b7ed5D0680d9066aac0396F0b1bD1E69;
-
+	
+    address constant test_mumbai = 0xeDb95D8037f769B72AAab41deeC92903A98C9E16;
         
 }
