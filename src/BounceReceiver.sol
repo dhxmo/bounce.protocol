@@ -22,6 +22,11 @@ contract BounceReceiver is IXReceiver, Ownable {
     // address of deployed router on this chain
     IBounce public bounceRouter;
 
+    // user => token => amount
+    mapping(address => mapping(address => uint256)) userFundsContractOwned;
+    // user => token => vault => amount
+    mapping(address => mapping(address => mapping(address => uint256))) userFundVaults;
+
     // _connext Address of deployed connext contract on present chain
     // _chainID ID of the present chain 
     // _domainID ID of the present chain for connext
@@ -48,6 +53,9 @@ contract BounceReceiver is IXReceiver, Ownable {
         }
     }
 
+    // mapping user => uint256
+    // how much a user will withdraw when he comes back for his money
+
     // receive bounce order from source chain
     function xReceive(
         bytes32 _transferId, // unique ID for the transfer - generated on the origin chain
@@ -55,35 +63,28 @@ contract BounceReceiver is IXReceiver, Ownable {
         address _asset, // destination chain asset
         address _originSender, // original source sender
         uint32 _origin, // source domain ID
-        bytes memory _callData // payload
+        bytes memory _payload // payload
     ) external returns (bytes memory) {
-        IBounce.Bounce_Order memory bo;
-        IBounce.Bounce_Route memory to_Bounce_Route;
-
-        // decode payload
-        (bo, to_Bounce_Route) = abi.decode(
-            _callData,
-            (IBounce.Bounce_Order, IBounce.Bounce_Route)
-        );
-
-        // define the bounce order on destination
-        IBounce.Bounce_Order memory to_Bounce_Order = IBounce.Bounce_Order(
-            address(this),
-            _origin,
-            domainID,
-            _asset,
-            _amount
-        );
-
+       
         // approve asset for bounce router to send to vault
         _tokenApproval(_asset, address(bounceRouter), _amount);
 
-        try IBounce(bounceRouter).BounceTo(to_Bounce_Order, to_Bounce_Route) returns (uint256 amtSent){
+        (bytes memory _calldata, address toAddress) = abi.decode(_payload, (bytes, address));
+
+
+        try IBounce(bounceRouter).BounceTo(toAddress, _asset, _amount, _calldata) returns (uint256 amtSent){
             // require the amount sent by the BounceTo function is gt.et the amount we sent over
-            require(amtSent >= to_Bounce_Order.minToTokenAmount);
+            require(amtSent >= _amount);
+            
+            // funds that have been sent over for this user
+            userFundsContractOwned[_originSender][_asset] = _amount;
+            userFundVaults[_originSender][_asset][toAddress] += _amount;
+
         } catch {
           // if external call fails, send funds to wallet address of user on this chain
           IERC20(_asset).transfer(_originSender, _amount);
         }
     }
+
+    // TODO: implement functionality to withdraw funds of the users when they want
 }

@@ -3,53 +3,27 @@
 pragma solidity ^0.8.7;
 
 interface IBounce {
-    struct Bounce_Route {
-        // address of source token
+
+    struct Order {
         address fromToken;
-        // amount of source token
+        address toToken;
+        address toAddress;
+        address BounceReceiver;
         uint256 fromTokenAmount;
-        // address of destinaion token
-        address toToken;
-        // address of vault to swap into
-        address toAddress;
-        // payload to pass into vault
-        bytes payload;
+        uint256 minAmtToToken;
+        uint256 relayerFee;
+        uint256 slippage;
+        uint32 toDomainID_Connext;
     }
 
-    // Bounce_Order struct for the receiver
-    struct Bounce_Order {
-        // user executing the order
-        address executor;
-        // connext specific source domain ID
-        uint32 fromDomainID;
-        // connext specific dest domain ID
-        uint32 toDomainID;
-        // address of destination token
-        address toToken;
-        // slippage
-        uint256 minToTokenAmount;
-    }
-
-    struct Bounce_Bridge {
-        uint256 fromChainID;
-        uint32 fromDomainID;
-        address fromAddress;
-        uint256 toChainID;
-        uint32 toDomainID;
-        address toAddress;
-    }
-
-    function BounceFrom(
-        Bounce_Order calldata order,
-        Bounce_Route calldata route,
-        Bounce_Bridge calldata bridgeOptions,
-        address BounceReceiver,
-        uint256 relayerFee,
-        uint256 slippage
-    ) external payable;
+    function BounceFrom(Order memory _order) external payable returns(bytes32);
 
     function BounceTo(
-        Bounce_Order calldata order,
-        Bounce_Route calldata route
+        address toAddress,
+        address toToken,
+        uint256 minToTokenAmount,
+        bytes calldata payload    
     ) external returns (uint256);
 }
+
+// ["0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6", "0x1E5341E4b7ed5D0680d9066aac0396F0b1bD1E69", "0x75A8B79dB3E6A135af4473818a739eB3dF3dED43", "0x75A8B79dB3E6A135af4473818a739eB3dF3dED43", 100, 90, 0, 20, 80001]

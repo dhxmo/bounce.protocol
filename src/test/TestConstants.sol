@@ -26,5 +26,7 @@ contract TestConstants {
     address constant connext_mumbai = 0xa2F2ed226d4569C8eC09c175DDEeF4d41Bab4627;
 
     address constant weth_mumbai = 0xFD2AB41e083c75085807c4A65C0A14FDD93d55A9;
+    address constant tWeth_mumbai = 0x1E5341E4b7ed5D0680d9066aac0396F0b1bD1E69;
+
         
 }

@@ -9,8 +9,6 @@ import {IConnext} from "@connext/nxtp-contracts/contracts/core/connext/interface
 import "./interfaces/IBounce.sol";
 
 contract BounceRouter is Ownable, IBounce {
-    using SafeERC20 for IERC20;
-
     // The connext contract on the origin domain.
     IConnext public immutable connext;
 
@@ -48,10 +46,10 @@ contract BounceRouter is Ownable, IBounce {
     ) internal returns (uint256) {
         IERC20 _token = IERC20(token);
 
-        require(_token.allowance(msg.sender, address(this)) >= amount, 
+        //require(_token.allowance(msg.sender, address(this)) >= amount, 
                     "User must approve amount");
         
-        _token.safeTransferFrom(user, address(this), amount);
+        _token.transferFrom(user, address(this), amount);
         return amount;
     }
 
@@ -64,98 +62,89 @@ contract BounceRouter is Ownable, IBounce {
         IERC20 _token = IERC20(token);
         if (_token.allowance(address(this), spender) >= amount) return;
         else {
-            _token.safeApprove(spender, type(uint256).max);
+            _token.approve(spender, type(uint256).max);
         }
     }
 
     /*
      * Functions to bounce a token over to Receiver bounce contract 
      */
-    function BounceFrom(
-        Bounce_Order calldata order,
-        Bounce_Route calldata route,
-        Bounce_Bridge calldata bridge,
-        address BounceReceiver,
-        uint256 relayerFee,
-        uint256 slippage
-    )   external 
-        override 
-        payable 
+
+    // @dev user has to approve tokens
+    function BounceFrom(Order memory _order) external override payable returns(bytes32)
         {
-        // each order has to be user specific
-        require(msg.sender == order.executor);
+            // 1. add liquidity to bounce contract
+            
+            IERC20(_order.fromToken).approve(address(this), _order.fromTokenAmount);
+            _addLiquidity(msg.sender, _order.fromToken, _order.fromTokenAmount); 
 
-       // TODO: use bridge options and add require checks
+            uint256 fromTokenBalance = IERC20(_order.fromToken).balanceOf(address(this));
+            // contract must have liquidity
+            require(fromTokenBalance >= _order.fromTokenAmount, "You do not have enough funds for this bounce");
+            
 
-        // check we're in the right chain
-        require(chainID == bridge.fromChainID);
+            // 2. approve token for connext bridge
+            _tokenApproval(_order.fromToken, address(connext), _order.fromTokenAmount);
 
-        // 1. add liquidity to bounce contract
+            // 3. connext bridge
+            
+            bytes memory _function = "";
+            //bytes memory _toAddress = "";
+            bytes memory payload = "";
 
-        _addLiquidity(order.executor, route.fromToken, route.fromTokenAmount); 
-        uint256 fromTokenBalance = IERC20(route.fromToken).balanceOf(address(this));
-        // contract must have liquidity
-        require(fromTokenBalance >= route.fromTokenAmount, "You do not have enough funds for this bounce");
+            // TODO:: to be passed in dynamically according to protocol later
+            _function = abi.encodeWithSignature("deposit(uint256)", _order.minAmtToToken);
 
-        // 2. approve token for connext bridge
-        _tokenApproval(route.fromToken, address(connext), route.fromTokenAmount);
+            payload = abi.encode(_function, _order.toAddress);
 
-        // 3. connext bridge
-        bytes memory payload = "";
-        payload = abi.encode(order, route);
+            // relayer fee 0 for testnet
+            bytes32 x = connext.xcall{value: 0}(
+                _order.toDomainID_Connext,       // Domain ID of the destination chain
+                _order.BounceReceiver,          // address of the target contract
+                _order.fromToken,               // address of the token contract
+                payable(msg.sender),            // address that can revert or forceLocal on destination
+                _order.fromTokenAmount,         // amount of tokens to transfer
+                _order.slippage,                // the maximum amount of slippage the user will accept in BPS
+                payload                         // the encoded calldata to send
+            );
 
-        connext.xcall{value: relayerFee}(
-            order.toDomainID,       // Domain ID of the destination chain
-            BounceReceiver,         // address of the target contract
-            route.fromToken,        // address of the token contract
-            payable(msg.sender),    // address that can revert or forceLocal on destination
-            route.fromTokenAmount,  // amount of tokens to transfer
-            slippage,               // the maximum amount of slippage the user will accept in BPS
-            payload                 // the encoded calldata to send
-        );
+            return x;
     }
-
-/*
- *    function _bounceFrom(
- *        Bounce_Order calldata order,
- *        Bounce_Route calldata route,
- *        Bounce_Bridge calldata bridge,
- *        // Bounce receiver contract to further execute the vault deposit
- *        address BounceReceiver,
- *        uint256 relayerFee,
- *        uint256 slippage
- *    ) private {
- *
- *            }
- */
 
     /*
      * Functions receiver bounce calls to send funds to wallet
      */
 
     // BounceReceiver will call this function
-    function BounceTo(Bounce_Order calldata order, Bounce_Route calldata route)
+    function BounceTo( 
+        address toAddress,
+        address toToken,
+        uint256 minToTokenAmount,
+        bytes calldata payload
+    )
         external
         override
         returns(uint256)
     {
-        return _bounceTo(order, route);
+        return _bounceTo(toAddress, toToken, minToTokenAmount, payload);
     }
 
     function _bounceTo(
-        Bounce_Order calldata order, 
-        Bounce_Route calldata route
+        address toAddress,
+        address toToken,
+        uint256 minToTokenAmount,
+        bytes calldata payload
     ) private returns(uint256) {
-        require(approvedAddresses[route.toAddress], "This endpoint hasn't been approved by the admin.");
+        require(approvedAddresses[toAddress], "This endpoint hasn't been approved by the admin.");
 
         // approve token that needs to be sent to the vualt
-        _tokenApproval(route.toToken, route.toAddress, order.minToTokenAmount);
+        _tokenApproval(toToken, toAddress, minToTokenAmount);
 
         // vault address -- call deposit specific to the vault being considered
-        (bool success, ) = (route.toAddress).call(route.payload);
+        (bool success, ) = toAddress.call(payload);
         require(success, "Deposit unsuccessful");
 
-        return order.minToTokenAmount;
+        return minToTokenAmount;
     }
 
 }
