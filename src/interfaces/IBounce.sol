@@ -4,11 +4,11 @@ pragma solidity ^0.8.7;
 
 interface IBounce {
     struct Bounce_Route {
-        // address of source token 
-        address fromToken; 
+        // address of source token
+        address fromToken;
         // amount of source token
         uint256 fromTokenAmount;
-        // destination chain ID
+        // address of destinaion token
         address toToken;
         // address of vault to swap into
         address toAddress;
@@ -16,13 +16,12 @@ interface IBounce {
         bytes payload;
     }
 
+    // Bounce_Order struct for the receiver
     struct Bounce_Order {
         // user executing the order
         address executor;
         // connext specific source domain ID
         uint32 fromDomainID;
-        // amount of surce token
-        // uint256 fromTokenAmount;
         // connext specific dest domain ID
         uint32 toDomainID;
         // address of destination token
@@ -41,7 +40,7 @@ interface IBounce {
     }
 
     function BounceFrom(
-        Bounce_Order memory order,
+        Bounce_Order calldata order,
         Bounce_Route calldata route,
         Bounce_Bridge calldata bridgeOptions,
         address BounceReceiver,
@@ -49,7 +48,8 @@ interface IBounce {
         uint256 slippage
     ) external payable;
 
-    function BounceTo(Bounce_Order memory order, Bounce_Route[] calldata route) external;
-    //returns (uint256);
-
+    function BounceTo(
+        Bounce_Order calldata order,
+        Bounce_Route calldata route
+    ) external returns (uint256);
 }

@@ -11,27 +11,27 @@ import {IConnext} from "@connext/nxtp-contracts/contracts/core/connext/interface
 import "./interfaces/IBounce.sol";
 
 contract BounceReceiver is IXReceiver, Ownable {
-
     using SafeERC20 for IERC20;
 
     // The address of the Connext contract on the destination domain
     IConnext public connext;
-    
+
     uint256 immutable chainID;
     uint32 immutable domainID;
 
     // address of deployed router on this chain
     IBounce public bounceRouter;
-    
+
     // _connext Address of deployed connext contract on present chain
-    // _chainID ID of the present chain
+    // _chainID ID of the present chain 
+    // _domainID ID of the present chain for connext
     constructor(IConnext _connext, uint256 _chainID, uint32 _domainID) {
         connext = _connext;
         chainID = _chainID;
         domainID = _domainID;
     }
 
-    function setBounceRouter(address _bounceRouterAddress) onlyOwner external {
+    function setBounceRouter(address _bounceRouterAddress) external onlyOwner {
         bounceRouter = IBounce(_bounceRouterAddress);
     }
 
@@ -48,20 +48,20 @@ contract BounceReceiver is IXReceiver, Ownable {
         }
     }
 
-
+    // receive bounce order from source chain
     function xReceive(
-        bytes32 _transferId,        // unique ID for the transfer - generated on the origin chain
-        uint256 _amount,            // amount from the source (accounting for slippage)
-        address _asset,             // destination chain asset
-        address _originSender,      // original source sender
-        uint32 _origin,             // source domain ID
-        bytes memory _callData      // payload
-      ) external returns (bytes memory) {
-
+        bytes32 _transferId, // unique ID for the transfer - generated on the origin chain
+        uint256 _amount, // amount from the source (accounting for slippage)
+        address _asset, // destination chain asset
+        address _originSender, // original source sender
+        uint32 _origin, // source domain ID
+        bytes memory _callData // payload
+    ) external returns (bytes memory) {
         IBounce.Bounce_Order memory bo;
-        IBounce.Bounce_Route memory br;
-        
-        (bo, br) = abi.decode(
+        IBounce.Bounce_Route memory to_Bounce_Route;
+
+        // decode payload
+        (bo, to_Bounce_Route) = abi.decode(
             _callData,
             (IBounce.Bounce_Order, IBounce.Bounce_Route)
         );
@@ -75,19 +75,15 @@ contract BounceReceiver is IXReceiver, Ownable {
             _amount
         );
 
-        _tokenApproval(_asset, address(connext), _amount);
+        // approve asset for bounce router to send to vault
+        _tokenApproval(_asset, address(bounceRouter), _amount);
 
-        // IBounceRouter(bounceRouter).BounceTo(); 
-
-        /*
-         *try {
-         *  //someExternalCall();
-         *  // BounceTo();
-         *} catch { 
-         *  // Make sure funds are delivered to logical owner on failing external calls
-         *}
-         */
-      }
+        try IBounce(bounceRouter).BounceTo(to_Bounce_Order, to_Bounce_Route) returns (uint256 amtSent){
+            // require the amount sent by the BounceTo function is gt.et the amount we sent over
+            require(amtSent >= to_Bounce_Order.minToTokenAmount);
+        } catch {
+          // if external call fails, send funds to wallet address of user on this chain
+          IERC20(_asset).transfer(_originSender, _amount);
+        }
+    }
 }
-
-

@@ -21,6 +21,7 @@ contract BounceRouter is Ownable, IBounce {
 
     // _connext Address of deployed connext contract on present chain
     // _chainID ID of the present chain
+    // _domainID ID of the present chain for connext
     constructor(IConnext _connext, uint256 _chainID, uint32 _domainID) {
         connext = _connext;
         chainID = _chainID;
@@ -71,7 +72,7 @@ contract BounceRouter is Ownable, IBounce {
      * Functions to bounce a token over to Receiver bounce contract 
      */
     function BounceFrom(
-        Bounce_Order memory order,
+        Bounce_Order calldata order,
         Bounce_Route calldata route,
         Bounce_Bridge calldata bridge,
         address BounceReceiver,
@@ -84,7 +85,7 @@ contract BounceRouter is Ownable, IBounce {
         // each order has to be user specific
         require(msg.sender == order.executor);
 
-        _bounce(
+        _bounceFrom(
             order,
             route,
             bridge,
@@ -94,8 +95,8 @@ contract BounceRouter is Ownable, IBounce {
         );
     }
 
-    function _bounce(
-        Bounce_Order memory order,
+    function _bounceFrom(
+        Bounce_Order calldata order,
         Bounce_Route calldata route,
         Bounce_Bridge calldata bridge,
         // Bounce receiver contract to further execute the vault deposit
@@ -103,6 +104,9 @@ contract BounceRouter is Ownable, IBounce {
         uint256 relayerFee,
         uint256 slippage
     ) private {
+
+        // TODO: use bridge options and add require checks
+
         // check we're in the right chain
         require(chainID == bridge.fromChainID);
 
@@ -131,20 +135,29 @@ contract BounceRouter is Ownable, IBounce {
         );
     }
 
-    function BounceTo(Bounce_Order memory order, Bounce_Route[] calldata route)
+    // BounceReceiver will call this function
+    function BounceTo(Bounce_Order calldata order, Bounce_Route calldata route)
         external
         override
-        //returns (uint256)
+        returns(uint256)
     {
-        //return _bounceTo(order, route);
+        return _bounceTo(order, route);
     }
 
-    /*
-     *function _bounceTo(
-     *    Bounce_Order memory order, 
-     *    Bounce_Route[] calldata route
-     *) private returns(uint256) {
-     *    return 1;    
-     *};
-     */
+    function _bounceTo(
+        Bounce_Order calldata order, 
+        Bounce_Route calldata route
+    ) private returns(uint256) {
+        require(approvedAddresses[route.toAddress], "This endpoint hasn't been approved by the admin.");
+
+        // approve token that needs to be sent to the vualt
+        _tokenApproval(route.toToken, route.toAddress, order.minToTokenAmount);
+
+        // vault address -- call deposit specific to the vault being considered
+        (bool success, ) = (route.toAddress).call(route.payload);
+        require(success, "404");
+
+        return order.minToTokenAmount;
+    }
+
 }
