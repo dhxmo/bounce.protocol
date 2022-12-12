@@ -1,0 +1,4 @@
+success txn hash deployed on georli -> 0xddee2e12ac43b56a89422eef4c9b16d5e58334cd11ccbdfedb226304712bcc2e
+
+0xcd5d1dc6ac57cff997005a932b8b725fd17909eab7374295f30fdc374a85371a
+
