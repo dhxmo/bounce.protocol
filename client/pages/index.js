@@ -1,9 +1,11 @@
-import Head from 'next/head'
+import Head from "next/head";
+
+import { Swap } from "../components/index";
 
 export default function Home() {
-  return (
-    <div>
-        Home
-     </div>
-  )
+    return (
+        <div>
+            <Swap />
+        </div>
+    );
 }

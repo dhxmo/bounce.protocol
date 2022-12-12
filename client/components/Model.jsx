@@ -1,7 +1,12 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
-const Model = () => {
-  return <div>Model</div>;
+import images from "../assets";
+
+const Model = ({ setOpenModel, connectWallet }) => {
+    //const walletMenu = ["Metamask", "WalletConnect"];
+    return (<div>
+            
+        </div>)
 };
 
 export default Model;
