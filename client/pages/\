@@ -1,10 +1,8 @@
 import "../styles/globals.css";
 
-import { Navbar } from "../components/index.js";
-
+import {Navbar} from "./components/index.js";
 const MyApp = ({ Component, pageProps }) => (
     <div>
-        <Navbar />
         <Component {...pageProps} />
     </div>
 );
