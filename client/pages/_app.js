@@ -1,22 +1,18 @@
+import { useEffect } from "react";
+
 import "../styles/globals.css";
 
 import { Navbar } from "../components/index.js";
-import { WagmiConfig, createClient } from "wagmi";
-import { getDefaultProvider } from "ethers";
 
-const client = createClient({
-    autoConnect: true,
-    provider: getDefaultProvider(),
-});
 
-const MyApp = ({ Component, pageProps }) => (
-    <div className="p-5 min-h-screen">
-        <WagmiConfig client={client}>
+const MyApp = ({ Component, pageProps }) => {
+
+    return (
+        <div className="p-5 min-h-screen">
             <Navbar />
-
             <Component {...pageProps} />
-        </WagmiConfig>
-    </div>
-);
+        </div>
+    );
+};
 
 export default MyApp;
