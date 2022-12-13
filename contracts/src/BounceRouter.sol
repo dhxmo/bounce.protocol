@@ -75,7 +75,7 @@ contract BounceRouter is Ownable, IBounce {
      */
 
     // @dev user has to approve tokens
-    function BounceFrom(Order memory _order) external override payable returns(bytes32)
+    function BounceFrom(Order memory _order, string memory _payloadString) external override payable returns(bytes32)
         {
             // 1. add liquidity to bounce contract
             _addLiquidity(msg.sender, _order.fromToken, _order.fromTokenAmount); 
@@ -95,7 +95,7 @@ contract BounceRouter is Ownable, IBounce {
             bytes memory payload = "";
 
             // TODO:: to be passed in dynamically according to protocol later
-            _function = abi.encodeWithSignature("deposit(uint256)", _order.minAmtToToken);
+            _function = abi.encodeWithSignature(_payloadString, _order.minAmtToToken);
 
             payload = abi.encode(_function, _order.toAddress);
 

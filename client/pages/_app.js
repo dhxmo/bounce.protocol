@@ -8,7 +8,7 @@ import { Navbar } from "../components/index.js";
 const MyApp = ({ Component, pageProps }) => {
 
     return (
-        <div className="p-5 min-h-screen">
+        <div className="p-5">
             <Navbar />
             <Component {...pageProps} />
         </div>

@@ -16,7 +16,7 @@ interface IBounce {
         uint32 toDomainID_Connext;
     }
 
-    function BounceFrom(Order memory _order) external payable returns(bytes32);
+    function BounceFrom(Order memory _order, string memory _payload) external payable returns(bytes32);
 
     function BounceTo(
         address toAddress,

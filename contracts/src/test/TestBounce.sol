@@ -89,8 +89,11 @@ contract TestBounce is Test, TestConstants {
             20,
             domainID_mumbai
          );
+         
+         // to be fetched from constants contract and passed by frontend
+         string memory _payloadString = "deposit(uint256)";
  
-         bytes32 x = bounceRouter_goerli.BounceFrom(_order);
+         bytes32 x = bounceRouter_goerli.BounceFrom(_order, _payloadString);
  
          emit log_named_bytes32("return bytes from xcall", x);
      }
@@ -107,9 +110,9 @@ contract TestBounce is Test, TestConstants {
         bytes memory _toAddress = "";
         bytes memory payload = "";
 
-        // TODO:: to be passed in dynamically according to protocol later
-        _function = abi.encodeWithSignature("deposit(uint256)", minAmount2Send);
-
+        // this payload will come from connext
+        string memory _payloadString = "deposit(uint256)";
+        _function = abi.encodeWithSignature(_payloadString, minAmount2Send);
         payload = abi.encode(_function, address(mockReceiver_mumbai));
 
         bounceReceiver_mumbai.xReceive(
