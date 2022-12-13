@@ -17,7 +17,7 @@ const DropdownWidget = ({ menuItems, sendData }) => {
                     {selectedValue}
                 </Dropdown.Button>
                 <Dropdown.Menu aria-label="Single selection actions" disallowEmptySelection selectionMode="single" selectedKeys={selected} onSelectionChange={handleChange} items={menuItems}>
-                    {(item) => <Dropdown.Item key={item.hex}>{item.network}</Dropdown.Item>}
+                    {(item) => <Dropdown.Item key={item.key}>{item.type}</Dropdown.Item>}
                 </Dropdown.Menu>
             </Dropdown>
         </div>

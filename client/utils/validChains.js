@@ -1,27 +1,27 @@
 const validChains = [
     {
-        network: "Goerli",
-        hex: "0x5",
+        type: "Goerli",
+        key: "0x5",
     },
     {
-        network: "Mainnet",
-        hex: "0x1",
+        type: "Mainnet",
+        key: "0x1",
     },
     {
-        network: "Mumbai",
-        hex: "0x13881",
+        type: "Mumbai",
+        key: "0x13881",
     },
     {
-        network: "Polygon",
-        hex: "0x89",
+        type: "Polygon",
+        key: "0x89",
     },
     {
-        network: "Arbitrum",
-        hex: "0xA4B1",
+        type: "Arbitrum",
+        key: "0xA4B1",
     },
     {
-        network: "Optimism",
-        hex: "0xA",
+        type: "Optimism",
+        key: "0xA",
     },
 ];
 
