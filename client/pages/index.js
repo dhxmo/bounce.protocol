@@ -6,7 +6,7 @@ import { BounceWidget } from "../components/index";
 export default function Home() {
 
     return (
-        <div className="grid h-screen place-items-center">
+        <div className="my-5 grid min-h-screen place-items-center">
             <BounceWidget />
         </div>
     );

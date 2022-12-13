@@ -52,11 +52,11 @@ const Wallet = () => {
 
     return (
         <div className="flex items-center space-around">
-            <button onClick={() => connectWallet()} className="bg-grey p-6 shadow-lg shadow-slate-300 rounded-lg text-orange-400 mx-6">
+            <button onClick={() => connectWallet()} className="bg-orange-100 p-3 shadow-lg shadow-slate-300 rounded-lg text-orange-400 mx-6">
                 {walletAddress ? walletAddress.substring(0, 7) + "..." : "Connect Wallet"}{" "}
             </button>
             <DropdownWidget menuItems={validChains} sendData={getData} />
-            <button onClick={() => switchNetwork()} className=" mx-6 bg-grey p-6 shadow-lg shadow-slate-300 rounded-lg text-orange-400">
+            <button onClick={() => switchNetwork()} className=" mx-6 bg-orange-100 p-3 shadow-lg shadow-slate-300 rounded-lg text-orange-400">
                 Switch Network
             </button>
         </div>

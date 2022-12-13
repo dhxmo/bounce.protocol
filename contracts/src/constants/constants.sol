@@ -17,8 +17,10 @@ contract Constants is Ownable {
     address[] private Vaults;
     string[] private VaultNames;
 
-    // here we add yearn vaults, beefy vaults, lido stake, aave deposit, multiple other functions across all top 10 TVL holding protocols in 5 chains
-    // for now just testnets will do fine
+    // domainID => approved token address
+    mapping(uint32 => address[]) private approvedTokens;
+    mapping(uint32 => string[]) private approvedTokenSymbols;
+
     function addProtocolFunctions(
         string memory _protocolName,
         address _contractAddress,
@@ -29,23 +31,37 @@ contract Constants is Ownable {
         ProtocolNames.push(_protocolName);
     }
 
-    function addLPFunctions(string memory _LPName,address _contractAddress, bytes memory _calldata)
-        external
-        onlyOwner
-    {
+    function addLPFunctions(
+        string memory _LPName,
+        address _contractAddress,
+        bytes memory _calldata
+    ) external onlyOwner {
         LPFunctions[_contractAddress] = _calldata;
         LPs.push(_contractAddress);
         LPNames.push(_LPName);
     }
 
-    function addVaultFunctions(string memory _LPName, address _contractAddress, bytes memory _calldata)
-        external
-        onlyOwner
-    {
+    function addVaultFunctions(
+        string memory _LPName,
+        address _contractAddress,
+        bytes memory _calldata
+    ) external onlyOwner {
         VaultFunctions[_contractAddress] = _calldata;
         Vaults.push(_contractAddress);
         VaultNames.push(_LPName);
     }
+
+    function addApprovedToken(uint32 _domainID, string memory _tokenSymbol, address _tokenAddress)
+        external
+        onlyOwner
+    {
+        approvedTokens[_domainID].push(_tokenAddress);
+        approvedTokenSymbols[_domainID].push(_tokenSymbol);
+    }
+
+    /*
+     * Get Functions
+     */
 
     function getAllProtocols() external view returns (address[] memory) {
         return Protocols;
@@ -59,7 +75,7 @@ contract Constants is Ownable {
         return ProtocolFunctions[_contractAddress];
     }
 
-    function getProtocolNames() external view returns(string[] memory) {
+    function getProtocolNames() external view returns (string[] memory) {
         return ProtocolNames;
     }
 
@@ -75,7 +91,7 @@ contract Constants is Ownable {
         return LPFunctions[_contractAddress];
     }
 
-        function getLPNames() external view returns(string[] memory) {
+    function getLPNames() external view returns (string[] memory) {
         return LPNames;
     }
 
@@ -91,14 +107,23 @@ contract Constants is Ownable {
         return VaultFunctions[_contractAddress];
     }
 
-        function getVaultNames() external view returns(string[] memory) {
+    function getVaultNames() external view returns (string[] memory) {
         return VaultNames;
     }
+
+    function getApprovedTokens(uint32 _domainID)
+        external
+        view
+        returns (address[] memory)
+    {
+        return approvedTokens[_domainID];
+    }
+
+    function getApprovedTokenSymbols(uint32 _domainID)
+        external
+        view
+        returns (address[] memory)
+    {
+        return approvedTokenSymbols[_domainID];
+    }
 }
-
-// nav in frontend will populate by reading this mapping and sending the appropriate calldata to Bounce
-
-// the frontend will read these mappings as well to know which contract to hit with what calldata
-// nav in frontend will populate by reading this mapping and sending the appropriate calldata to Bounce
-
-// the frontend will read these mappings as well to know which contract to hit with what calldata
