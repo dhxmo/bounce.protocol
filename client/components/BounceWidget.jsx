@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Radio } from "@material-tailwind/react";
 import Web3Modal from "web3modal";
-import { ethers } from "ethers";
+import { ethers, BigNumber } from "ethers";
 
 import { DropdownWidget } from "./index";
 import { validChains, bounceTo, LPAddresses, VaultAddresses, chainDomainID } from "../utils/index";
@@ -9,14 +9,16 @@ import { BOUNCE_CONSTANTS_ADDRESS, BOUNCE_CONSTANTS_ABI } from "../config";
 
 const BounceWidget = ({ constantsContract }) => {
     const [contract, setContract] = useState();
+    const [inputTokensList, setInputTokensList] = useState([]);
+    const [outputTokensList, setOutputTokensList] = useState([]);
 
     const [inputValue, setInputValue] = useState(0);
-    const [inputToken, setInputToken] = useState("");
+    const [srcToken, setSrcToken] = useState("");
     const [targetChain, setTargetChain] = useState("");
     const [slippage, setSlippage] = useState(0);
     const [bounceToType, setBounceToType] = useState("");
     const [contractTo, setContractTo] = useState("");
-    const [outputToken, setOutputToken] = useState("");
+    const [destToken, setDestToken] = useState("");
 
     // contracts used in a protocol/lp/vault
     const [useAddress, setUseAddress] = useState([]);
@@ -36,6 +38,7 @@ const BounceWidget = ({ constantsContract }) => {
 
             setContract(_contract);
         }
+
         getContract();
     }, [contract]);
 
@@ -88,10 +91,12 @@ const BounceWidget = ({ constantsContract }) => {
     }
 
     async function inputTokens() {
+        //                     get input tokens list
         const InputTokens = [];
 
         const chainID = window.ethereum.chainId;
-        const domainID = chainDomainID.chainID;
+        const domainID = BigNumber.from(chainDomainID[chainID]);
+
         const addresses = await contract.getApprovedTokens(domainID);
         const names = await contract.getApprovedTokenSymbols(domainID);
 
@@ -102,33 +107,34 @@ const BounceWidget = ({ constantsContract }) => {
             });
         }
 
-        setInputToken(InputToken);
+        setInputTokensList(InputTokens);
     }
 
     async function outputTokens() {
-        const OutputTokens = [];
+        if (!targetChain) {
+            window.alert("Please select a target chain");
+        } else {
+            const OutputTokens = [];
 
-        const chainID = targetChain;
-        const domainID = chainDomainID.chainID;
-        const addresses = await contract.getApprovedTokens(domainID);
-        const names = await contract.getApprovedTokenSymbols(domainID);
+            const domainID = BigNumber.from(chainDomainID[targetChain]);
 
-        for (let i = 0; i < names.length; i++) {
-            OutputTokens.push({
-                type: names[i],
-                key: addresses[i],
-            });
+            const addresses = await contract.getApprovedTokens(domainID);
+            const names = await contract.getApprovedTokenSymbols(domainID);
+
+            for (let i = 0; i < names.length; i++) {
+                OutputTokens.push({
+                    type: names[i],
+                    key: addresses[i],
+                });
+            }
+
+            setOutputTokensList(OutputTokens);
         }
-
-        setOutputToken(OutputToken);
     }
 
-    const handleInputChange = async (e) => {
+    const handleInputChange = (e) => {
         // handle input chaage
         setInputValue(e.target.value);
-
-        // fetch approved tokens in the present chain
-        await inputTokens();
     };
 
     const handleSlippageChange = (e) => {
@@ -136,14 +142,11 @@ const BounceWidget = ({ constantsContract }) => {
     };
 
     const getInputTokenData = (data) => {
-        setInputToken(data.anchorKey);
+        setSrcToken(data.anchorKey);
     };
 
     const getChainData = async (data) => {
         setTargetChain(data.anchorKey);
-
-        // set list of output tokens when target chain is selected
-        await outputTokens();
     };
 
     const getBounceToData = (data) => {
@@ -155,7 +158,7 @@ const BounceWidget = ({ constantsContract }) => {
     };
 
     const getOutputTokenData = (data) => {
-        setOutputToken(data.anchorKey);
+        setDestToken(data.anchorKey);
     };
 
     const bounce = () => {
@@ -186,49 +189,48 @@ const BounceWidget = ({ constantsContract }) => {
     };
 
     return (
-        <div className="rounded-lg bg-orange-100 shadow-md p-10 grid grid-cols-1 grid-rows-3 place-items-center">
+        <div className="rounded-lg bg-orange-100 shadow-md p-4 grid grid-cols-1 grid-rows-6 place-items-center">
             <div className="flex">
-                <input name="inputValue" type="number" value={inputValue} onChange={handleInputChange} className="mx-5" />
+                <button onClick={inputTokens} className="bg-orange-100 p-6 shadow-lg shadow-slate-300 rounded-lg text-orange-400 mx-6">
+                    Get src approved tokens
+                </button>
 
-                {/*
-  *1. get present chain from wallet
-  2. find out avaialbel token addresses for present chain from constants contract
-  */}
-                <DropdownWidget menuItems={inputToken} sendData={getInputTokenData} />
+                <DropdownWidget menuItems={inputTokensList} sendData={getInputTokenData} />
+                <input name="inputValue" type="number" value={inputValue} onChange={handleInputChange} className="mx-5" />
             </div>
 
-            <div className="grid grid-cols-1 grid-rows-3 justify-items-center items-start place-content-start">
+            <div className="grid grid-cols-1 grid-rows-5 justify-items-center items-start place-content-start">
                 <div className="flex items-center">
                     <p className="mx-6">Destination chain</p>
                     <DropdownWidget menuItems={validChains} sendData={getChainData} />
                 </div>
-
+                <div className="flex my-6">
+                    <button onClick={outputTokens} className="bg-orange-100 p-6 shadow-lg shadow-slate-300 rounded-lg text-orange-400 mx-6">
+                        Get dest approved tokens
+                    </button>
+                    <div className="mx-3">
+                        <p>Final token</p>
+                        <DropdownWidget menuItems={outputTokensList} sendData={getOutputTokenData} />
+                    </div>
+                </div>
                 <div className="flex items-center">
                     <p>slippage(%)</p>
                     <input name="slippage" type="number" value={slippage} onChange={handleSlippageChange} className="mx-5" />
                 </div>
-
                 <div className="grid grid-rows-1 grid-cols-3 gap-x-5 justify-items-center">
                     <Radio id="protocol" name="type" label="Protocol" onClick={protocols} />
                     <Radio id="lp" name="type" label="LP" onClick={lps} />
                     <Radio id="vault" name="type" label="Vault" onClick={vaults} />
                 </div>
-
                 <div className="my-6 flex">
-                    <div className="mx-3">
-                        <p>Final token</p>
-                        <DropdownWidget menuItems={outputToken} sendData={getOutputTokenData} />
-                    </div>
-
                     <div className="mx-3">
                         <p>Destination</p>
                         <DropdownWidget menuItems={useAddress} sendData={getContractAddressData} />
                     </div>
+                </div>{" "}
+                <div>
+                    <button className="bg-black p-6 shadow-lg shadow-slate-300 rounded-lg text-orange-400 mx-6">Bounce</button>
                 </div>
-            </div>
-
-            <div>
-                <button className="bg-black p-6 shadow-lg shadow-slate-300 rounded-lg text-orange-400 mx-6">Bounce</button>
             </div>
         </div>
     );
