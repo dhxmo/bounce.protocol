@@ -91,9 +91,9 @@ const BounceWidget = ({ constantsContract }) => {
         const InputTokens = [];
 
         const chainID = window.ethereum.chainId;
-        const domain = chainDomainID.chainID;
-        const addresses = await contract.getApprovedTokens(domain);
-        const names = await contract.getApprovedTokenSymbols(domain);
+        const domainID = chainDomainID.chainID;
+        const addresses = await contract.getApprovedTokens(domainID);
+        const names = await contract.getApprovedTokenSymbols(domainID);
 
         for (let i = 0; i < names.length; i++) {
             InputTokens.push({
@@ -105,24 +105,45 @@ const BounceWidget = ({ constantsContract }) => {
         setInputToken(InputToken);
     }
 
-    const handleInputChange = (e) => {
+    async function outputTokens() {
+        const OutputTokens = [];
+
+        const chainID = targetChain;
+        const domainID = chainDomainID.chainID;
+        const addresses = await contract.getApprovedTokens(domainID);
+        const names = await contract.getApprovedTokenSymbols(domainID);
+
+        for (let i = 0; i < names.length; i++) {
+            OutputTokens.push({
+                type: names[i],
+                key: addresses[i],
+            });
+        }
+
+        setOutputToken(OutputToken);
+    }
+
+    const handleInputChange = async (e) => {
         // handle input chaage
         setInputValue(e.target.value);
 
         // fetch approved tokens in the present chain
-        inputTokens();
+        await inputTokens();
     };
 
     const handleSlippageChange = (e) => {
         setSlippage(e.target.value);
     };
 
-    const getInputToken = (data) => {
-        setInputToken(data);
+    const getInputTokenData = (data) => {
+        setInputToken(data.anchorKey);
     };
 
-    const getChainData = (data) => {
+    const getChainData = async (data) => {
         setTargetChain(data.anchorKey);
+
+        // set list of output tokens when target chain is selected
+        await outputTokens();
     };
 
     const getBounceToData = (data) => {
@@ -131,6 +152,10 @@ const BounceWidget = ({ constantsContract }) => {
 
     const getContractAddressData = (data) => {
         setContractTo(data.anchorKey);
+    };
+
+    const getOutputTokenData = (data) => {
+        setOutputToken(data.anchorKey);
     };
 
     const bounce = () => {
@@ -148,9 +173,7 @@ const BounceWidget = ({ constantsContract }) => {
              *   minAmount2Send,                    (inputValue - slippage*inputValue)
              *   0,                                 (cointract function to computre relayer fee)
              *   20,                                (slippage)
-             *   domainID_mumbai                    (destination domainID, from a mapping of destination hex to domainID of connext
-             *                                              use object of hex to domainID for connext to obtain this from (targetChain)
-             *                                                  )
+             *   domainID_mumbai                    (chainDomainID.chainID   -> chainID = window.ethereum.chainId)
              *);
              *
              * to be fetched from constants contract, getProtocol/LP/VaultCallData(address)
@@ -171,7 +194,7 @@ const BounceWidget = ({ constantsContract }) => {
   *1. get present chain from wallet
   2. find out avaialbel token addresses for present chain from constants contract
   */}
-                <DropdownWidget menuItems={inputToken} sendData={getInputToken} />
+                <DropdownWidget menuItems={inputToken} sendData={getInputTokenData} />
             </div>
 
             <div className="grid grid-cols-1 grid-rows-3 justify-items-center items-start place-content-start">
@@ -191,25 +214,14 @@ const BounceWidget = ({ constantsContract }) => {
                     <Radio id="vault" name="type" label="Vault" onClick={vaults} />
                 </div>
 
-                {/*
-                 * add input for slippage - add state and that bvecome the minAmountToSend
-                 */}
-
-                {/*
-                 * which specific protocol/LP/vault. this will query constants contract
-                 */}
                 <div className="my-6 flex">
                     <div className="mx-3">
                         <p>Final token</p>
-                        {/*
-  *1. get destination chain and read mapping of hex => domainID
-  2. find out avaialble token addresses for present chain from constants contract
-  */}
-                        <DropdownWidget menuItems={useAddress} sendData={getContractAddressData} />
+                        <DropdownWidget menuItems={outputToken} sendData={getOutputTokenData} />
                     </div>
 
                     <div className="mx-3">
-                        <p>Address</p>
+                        <p>Destination</p>
                         <DropdownWidget menuItems={useAddress} sendData={getContractAddressData} />
                     </div>
                 </div>

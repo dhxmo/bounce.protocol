@@ -9,12 +9,21 @@ import {IConnext} from "@connext/nxtp-contracts/contracts/core/connext/interface
 // TODO: add error if there's not enough liquidity to teleport over
 // TODO: Zap into a vault that requires splits etc.
 
-
 import "./interfaces/IBounce.sol";
 
+interface IConstants {
+    function getApprovedTokens(uint32 _domainID)
+        external
+        view
+        returns (address[] memory);
+}
+
 contract BounceRouter is Ownable, IBounce {
+    error BounceRouter__IllegalToken();
+
     // The connext contract on the origin domain.
     IConnext public immutable connext;
+    IConstants public immutable constants;
 
     uint256 immutable chainID;
     uint32 immutable domainID;
@@ -24,10 +33,17 @@ contract BounceRouter is Ownable, IBounce {
     // _connext Address of deployed connext contract on present chain
     // _chainID ID of the present chain
     // _domainID ID of the present chain for connext
-    constructor(address _connext, uint256 _chainID, uint32 _domainID) {
+    // _constantsContract address of the constants contract
+    constructor(
+        address _connext,
+        uint256 _chainID,
+        uint32 _domainID,
+        address _constantsContract
+    ) {
         connext = IConnext(_connext);
         chainID = _chainID;
         domainID = _domainID;
+        constants = IConstants(_constantsContract);
     }
 
     /*
@@ -50,9 +66,9 @@ contract BounceRouter is Ownable, IBounce {
     ) internal returns (uint256) {
         IERC20 _token = IERC20(token);
 
-        //require(_token.allowance(msg.sender, address(this)) >= amount, 
+        //require(_token.allowance(msg.sender, address(this)) >= amount,
         //            "User must approve amount");
-        
+
         _token.transferFrom(user, address(this), amount);
         return amount;
     }
@@ -71,46 +87,65 @@ contract BounceRouter is Ownable, IBounce {
     }
 
     /*
-     * Functions to bounce a token over to Receiver bounce contract 
+     * Functions to bounce a token over to Receiver bounce contract
      */
 
     // @dev user has to approve tokens
-    function BounceFrom(Order memory _order, string memory _payloadString) external override payable returns(bytes32)
-        {
-            // 1. add liquidity to bounce contract
-            _addLiquidity(msg.sender, _order.fromToken, _order.fromTokenAmount); 
+    function BounceFrom(Order memory _order, string memory _payloadString)
+        external
+        payable
+        override
+        returns (bytes32)
+    {
+        // check token being bounced is approved for source domain
+        if (!approvedToken(domainID, _order.fromToken)) {
+            revert BounceRouter__IllegalToken();
+        }
+        // 1. add liquidity to bounce contract
+        _addLiquidity(msg.sender, _order.fromToken, _order.fromTokenAmount);
 
-            uint256 fromTokenBalance = IERC20(_order.fromToken).balanceOf(address(this));
-            // contract must have liquidity
-            require(fromTokenBalance >= _order.fromTokenAmount, "You do not have enough funds for this bounce");
-            
+        uint256 fromTokenBalance = IERC20(_order.fromToken).balanceOf(
+            address(this)
+        );
+        // contract must have liquidity
+        require(
+            fromTokenBalance >= _order.fromTokenAmount,
+            "You do not have enough funds for this bounce"
+        );
 
-            // 2. approve token for connext bridge
-            _tokenApproval(_order.fromToken, address(connext), _order.fromTokenAmount);
+        // 2. approve token for connext bridge
+        _tokenApproval(
+            _order.fromToken,
+            address(connext),
+            _order.fromTokenAmount
+        );
 
-            // 3. connext bridge
-            
-            bytes memory _function = "";
-            //bytes memory _toAddress = "";
-            bytes memory payload = "";
+        // 3. connext bridge
 
-            // TODO:: to be passed in dynamically according to protocol later
-            _function = abi.encodeWithSignature(_payloadString, _order.minAmtToToken);
+        bytes memory _function = "";
+        //bytes memory _toAddress = "";
+        bytes memory payload = "";
 
-            payload = abi.encode(_function, _order.toAddress);
+        // TODO:: to be passed in dynamically according to protocol later
+        _function = abi.encodeWithSignature(
+            _payloadString,
+            _order.minAmtToToken
+        );
 
-            // relayer fee 0 for testnet
-            bytes32 x = connext.xcall{value: 0}(
-                _order.toDomainID_Connext,       // Domain ID of the destination chain
-                _order.BounceReceiver,          // address of the target contract
-                _order.fromToken,               // address of the token contract
-                payable(msg.sender),            // address that can revert or forceLocal on destination
-                _order.fromTokenAmount,         // amount of tokens to transfer
-                _order.slippage,                // the maximum amount of slippage the user will accept in BPS
-                payload                         // the encoded calldata to send
-            );
+        payload = abi.encode(_function, _order.toAddress);
 
-            return x;
+        // relayer fee 0 for testnet
+        bytes32 x = connext.xcall{value: 0}(
+            _order.toDomainID_Connext, // Domain ID of the destination chain
+            _order.BounceReceiver, // address of the target contract
+            _order.fromToken, // address of the token contract
+            payable(msg.sender), // address that can revert or forceLocal on destination
+            _order.fromTokenAmount, // amount of tokens to transfer
+            _order.slippage, // the maximum amount of slippage the user will accept in BPS
+            payload // the encoded calldata to send
+        );
+
+        return x;
     }
 
     /*
@@ -118,16 +153,12 @@ contract BounceRouter is Ownable, IBounce {
      */
 
     // BounceReceiver will call this function
-    function BounceTo( 
+    function BounceTo(
         address toAddress,
         address toToken,
         uint256 minToTokenAmount,
         bytes calldata payload
-    )
-        external
-        override
-        returns(uint256)
-    {
+    ) external override returns (uint256) {
         return _bounceTo(toAddress, toToken, minToTokenAmount, payload);
     }
 
@@ -136,8 +167,11 @@ contract BounceRouter is Ownable, IBounce {
         address toToken,
         uint256 minToTokenAmount,
         bytes calldata payload
-    ) private returns(uint256) {
-        require(approvedAddresses[toAddress], "This endpoint hasn't been approved by the admin.");
+    ) private returns (uint256) {
+        require(
+            approvedAddresses[toAddress],
+            "This endpoint hasn't been approved by the admin."
+        );
 
         // approve token that needs to be sent to the vualt
         _tokenApproval(toToken, toAddress, minToTokenAmount);
@@ -149,4 +183,16 @@ contract BounceRouter is Ownable, IBounce {
         return minToTokenAmount;
     }
 
+    function approvedToken(uint32 _domainID, address _tokenAddress)
+        internal
+        returns (bool)
+    {
+        address[] memory approvedTokens = constants.getApprovedTokens(
+            _domainID
+        );
+
+        for (uint256 i = 0; i < approvedTokens.length; i++) {
+            if (approvedTokens[i] == _tokenAddress) return true;
+        }
+    }
 }

@@ -20,6 +20,7 @@
   "devDependencies": {
     "@material-tailwind/react": "^1.2.4",
     "@nextui-org/react": "^1.0.0-beta.10",
+    "@restart/ui": "^1.4.1",
     "@thirdweb-dev/react": "^3.6.7",
     "@thirdweb-dev/sdk": "^3.6.7",
     "@wagmi/core": "^0.8.2",

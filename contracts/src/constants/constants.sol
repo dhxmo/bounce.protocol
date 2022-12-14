@@ -122,7 +122,7 @@ contract Constants is Ownable {
     function getApprovedTokenSymbols(uint32 _domainID)
         external
         view
-        returns (address[] memory)
+        returns (string[] memory)
     {
         return approvedTokenSymbols[_domainID];
     }

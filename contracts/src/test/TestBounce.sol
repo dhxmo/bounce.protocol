@@ -8,6 +8,7 @@ import "./TestConstants.sol";
 
 import "../BounceRouter.sol";
 import "../BounceReceiver.sol";
+import "../constants/constants.sol";
 import "../interfaces/IBounce.sol";
 import "../mock/MockReceiverVault.sol";
 
@@ -16,14 +17,16 @@ contract TestBounce is Test, TestConstants {
     uint256 mumbai_forkID;
 
     BounceRouter bounceRouter_goerli;
+    Constants bounce_constants_goerli;
 
     BounceReceiver bounceReceiver_mumbai;
     BounceRouter bounceRouter_mumbai;
+    Constants bounce_constants_mumbai;
+
     MockReceiverVault mockReceiver_mumbai;
 
     uint256 amount2Send = 1200;
     uint256 minAmount2Send = 1000;
-
 
     function setUp() public {
         goerli_forkID = vm.createFork("goerli");
@@ -38,47 +41,64 @@ contract TestBounce is Test, TestConstants {
         assertEq(vm.activeFork(), mumbai_forkID);
 
         // create new BounceReceiver instance on dest chain
-        bounceReceiver_mumbai = new BounceReceiver(connext_mumbai, chainID_mumbai, domainID_mumbai);
+        bounce_constants_goerli = new Constants();
+        bounceReceiver_mumbai = new BounceReceiver(
+            connext_mumbai,
+            chainID_mumbai,
+            domainID_mumbai
+        );
         vm.makePersistent(address(bounceReceiver_mumbai));
 
         // create new BounceRouter instance on dest chain
-        bounceRouter_mumbai = new BounceRouter(connext_mumbai, chainID_mumbai, domainID_mumbai);
+        bounce_constants_mumbai = new Constants();
+        bounceRouter_mumbai = new BounceRouter(
+            connext_mumbai,
+            chainID_mumbai,
+            domainID_mumbai,
+            address(bounce_constants_mumbai)
+        );
         vm.makePersistent(address(bounceRouter_mumbai));
 
         // add vault where funds will go. in main, this would be Beefy finance etc
-        mockReceiver_mumbai = new MockReceiverVault(); 
+        mockReceiver_mumbai = new MockReceiverVault();
         vm.makePersistent(address(mockReceiver_mumbai));
 
         // approve vault address on router on dest chain
-        bounceRouter_mumbai.addApprovedSwapAddress(address(mockReceiver_mumbai));
+        bounceRouter_mumbai.addApprovedSwapAddress(
+            address(mockReceiver_mumbai)
+        );
 
-         /*
-          *goerli deployments
-          */
+        /*
+         *goerli deployments
+         */
         vm.selectFork(goerli_forkID);
         assertEq(vm.activeFork(), goerli_forkID);
 
         // create new BounceRouter contract instance on src chain
-        bounceRouter_goerli = new BounceRouter(connext_goerli, chainID_goerli, domainID_goerli);
+        bounceRouter_goerli = new BounceRouter(
+            connext_goerli,
+            chainID_goerli,
+            domainID_goerli,
+            address(bounce_constants_goerli)
+        );
         vm.makePersistent(address(bounceRouter_goerli));
 
         vm.stopPrank();
     }
 
-     function test_1_BounceRouter() public {
-         vm.selectFork(goerli_forkID);
-         assertEq(vm.activeFork(), goerli_forkID);
- 
-         // add USDC to user aaccount
-         deal(weth_goerli, user1, userBalance);
-         vm.startPrank(user1);
- 
+    function test_1_BounceRouter() public {
+        vm.selectFork(goerli_forkID);
+        assertEq(vm.activeFork(), goerli_forkID);
 
-         assertEq(wethGoerli.balanceOf(user1), userBalance);
- 
-         wethGoerli.approve(address(bounceRouter_goerli), 12e18);
+        // add USDC to user aaccount
+        deal(weth_goerli, user1, userBalance);
+        vm.startPrank(user1);
 
-         IBounce.Order memory _order = IBounce.Order(
+        assertEq(wethGoerli.balanceOf(user1), userBalance);
+
+        wethGoerli.approve(address(bounceRouter_goerli), 12e18);
+
+        IBounce.Order memory _order = IBounce.Order(
             weth_goerli,
             tWeth_mumbai,
             address(mockReceiver_mumbai),
@@ -88,23 +108,22 @@ contract TestBounce is Test, TestConstants {
             0,
             20,
             domainID_mumbai
-         );
-         
-         // to be fetched from constants contract and passed by frontend
-         string memory _payloadString = "deposit(uint256)";
- 
-         bytes32 x = bounceRouter_goerli.BounceFrom(_order, _payloadString);
- 
-         emit log_named_bytes32("return bytes from xcall", x);
-     }
+        );
 
-     function test_2_BounceReceiver() public {
+        // to be fetched from constants contract and passed by frontend
+        string memory _payloadString = "deposit(uint256)";
+
+        bytes32 x = bounceRouter_goerli.BounceFrom(_order, _payloadString);
+
+        emit log_named_bytes32("return bytes from xcall", x);
+    }
+
+    function test_2_BounceReceiver() public {
         vm.selectFork(mumbai_forkID);
         assertEq(vm.activeFork(), mumbai_forkID);
 
         vm.startPrank(deployer);
         bounceReceiver_mumbai.setBounceRouter(address(bounceRouter_mumbai));
-        
 
         bytes memory _function = "";
         bytes memory _toAddress = "";
@@ -123,7 +142,7 @@ contract TestBounce is Test, TestConstants {
             domainID_goerli,
             payload
         );
-     }
+    }
 
     function convert(uint256 n) internal returns (bytes32) {
         return bytes32(n);
