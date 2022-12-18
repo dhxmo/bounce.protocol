@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { Radio } from "@material-tailwind/react";
 import { ethers, BigNumber } from "ethers";
-import { create, NxtpSdkConfig } from "@connext/nxtp-sdk";
+import { useRouter } from "next/router";
 
 import { DropdownWidget } from "./index";
 import { validChains, bounceTo, LPAddresses, VaultAddresses, chainDomainID, GOERLI_RPC_URL, MUMBAI_RPC_URL } from "../utils/index";
 
 import { BOUNCE_ADDRESS, BOUNCE_ABI, BOUNCE_CONSTANTS_ADDRESS, BOUNCE_CONSTANTS_ABI, BOUNCE_RECEIVER_ADDRESS } from "../config";
 
-const BounceWidget = () => {
+const ProtocolBounceWidget = () => {
+    const router = useRouter();
+
     const [contract, setContract] = useState();
     const [bounceContract, setBounceContract] = useState();
     const [signer, setSigner] = useState();
@@ -54,7 +56,7 @@ const BounceWidget = () => {
             if (x.length == 0) {
                 const y = await contract.getProtocolCalldata(contractTo);
 
-                if(y.length == 0) {
+                if (y.length == 0) {
                     const z = await contract.getLPCalldata(contractTo);
                     setContractCalldata(z);
                 }
@@ -74,38 +76,6 @@ const BounceWidget = () => {
 
         const addresses = await contract.getAllProtocols();
         const names = await contract.getProtocolNames();
-        for (let i = 0; i < names.length; i++) {
-            ProtocolAddresses.push({
-                type: names[i],
-                key: addresses[i],
-            });
-        }
-
-        setUseAddress(ProtocolAddresses);
-    }
-
-    // helper function to populate all the LPs to be bounced into
-    async function lps() {
-        const ProtocolAddresses = [];
-
-        const addresses = await contract.getAllLPs();
-        const names = await contract.getLPNames();
-        for (let i = 0; i < names.length; i++) {
-            ProtocolAddresses.push({
-                type: names[i],
-                key: addresses[i],
-            });
-        }
-
-        setUseAddress(ProtocolAddresses);
-    }
-
-    // helper function to populate all the vaultss to be bounced into
-    async function vaults() {
-        const ProtocolAddresses = [];
-
-        const addresses = await contract.getAllVaults();
-        const names = await contract.getVaultNames();
         for (let i = 0; i < names.length; i++) {
             ProtocolAddresses.push({
                 type: names[i],
@@ -175,72 +145,13 @@ const BounceWidget = () => {
         setTargetChain(data.anchorKey);
     }
 
-    function getContractAddressData (data) {
+    function getContractAddressData(data) {
         setContractTo(data.anchorKey);
     }
 
     function getOutputTokenData(data) {
         setDestToken(data.anchorKey);
     }
-
-    // only able to hardcode domainIDs, dynamically, no go
-{/*
-  *    async function estimateRelayerFee() {
-  *        const srcChainID = window.ethereum.chainId;
-  *
-  *        if (!srcChainID && !targetChain) {
-  *            window.alert("Please select source & target chains");
-  *        } else {
-  *            const srcDomainID = parseInt(chainDomainID[srcChainID]);
-  *            const destDomainID = parseInt(chainDomainID[targetChain]);
-  *
-  *            const nxtpConfig = {
-  *                logLevel: "info",
-  *                signerAddress: signer,
-  *
-  *                chains: {
-  *                    srcDomainID: {
-  *                        providers: [GOERLI_RPC_URL],
-  *                        assets: [
-  *                            {
-  *                                // this has to dynamically update when more support for other tokens is added
-  *                                address: srcToken,
-  *                                name: "TEST",
-  *                                symbol: "TEST",
-  *                                address: "0x7ea6eA49B0b0Ae9c5db7907d139D9Cd3439862a1",
-  *                            },
-  *                        ],
-  *                    },
-  *                    destDomainID: {
-  *                        providers: [MUMBAI_RPC_URL],
-  *                        assets: [
-  *                            {
-  *                                //this has to dynamically update when more support for other tokens is added
-  *
-  *                                address: destToken,
-  *
-  *                                name: "TEST",
-  *                                symbol: "TEST",
-  *                                address: "0xeDb95D8037f769B72AAab41deeC92903A98C9E16",
-  *                            },
-  *                        ],
-  *                    },
-  *                },
-  *            };
-  *
-  *            const { nxtpSdkBase } = await create(nxtpConfig);
-  *
-  *            const params = {
-  *                originDomain: srcDomainID,
-  *                destinationDomain: destDomainID,
-  *            };
-  *
-  *            const relayerFee = await nxtpSdkBase.estimateRelayerFee(params);
-  *            console.log(relayerFee);
-  *            return relayerFee;
-  *        }
-  *    }
-  */}
 
     async function bounce() {
         const receiverAddress = BOUNCE_RECEIVER_ADDRESS[targetChain];
@@ -254,21 +165,30 @@ const BounceWidget = () => {
         // const relayerFee = await estimateRelayerFee();
 
         const slip = BigNumber.from(slippage);
-             //when sending data crosschain
-             
+        //when sending data crosschain
+
         const _order = [
-                srcToken,                        
-                destToken,                      
-                contractTo,      
-                receiverAddress,    
-                inTokenValue,                       
-                minAmt2Send,                   
-                0, // relayer fee - 0 for testnet
-                slip,                                
-                chainDomainID.destchainID
+            srcToken,
+            destToken,
+            contractTo,
+            receiverAddress,
+            inTokenValue,
+            minAmt2Send,
+            0, // relayer fee - 0 for testnet
+            slip,
+            chainDomainID.destchainID,
         ];
-             
-        bounceContract.BounceFrom(_order, contractCalldata);
+
+        try {
+            let tx = await bounceContract.BounceFrom(_order, contractCalldata);
+            let x = await tx.wait();
+
+            if (x.status == 1) {
+                router.push("/");
+            }
+        } catch (e) {
+            window.alert(e);
+        }
     }
 
     return (
@@ -301,9 +221,9 @@ const BounceWidget = () => {
                     <input name="slippage" type="number" value={slippage} onChange={handleSlippageChange} className="mx-5" />
                 </div>
                 <div className="grid grid-rows-1 grid-cols-3 gap-x-5 justify-items-center">
-                    <Radio id="protocol" name="type" label="Protocol" onClick={protocols} />
-                    <Radio id="lp" name="type" label="LP" onClick={lps} />
-                    <Radio id="vault" name="type" label="Vault" onClick={vaults} />
+                    <button className="bg-black p-3 shadow-lg shadow-slate-300 rounded-lg text-orange-400 mx-6" onClick={protocols}>
+                        Ready
+                    </button>
                 </div>
                 <div className="my-6 flex items-center">
                     <div className="mx-3">
@@ -312,7 +232,7 @@ const BounceWidget = () => {
                     </div>
                     <div>
                         <button className="bg-black p-3 shadow-lg shadow-slate-300 rounded-lg text-orange-400 mx-6" onClick={getCallData}>
-                            Ready
+                            Set
                         </button>
                     </div>
                 </div>
@@ -326,4 +246,4 @@ const BounceWidget = () => {
     );
 };
 
-export default BounceWidget;
+export default ProtocolBounceWidget;

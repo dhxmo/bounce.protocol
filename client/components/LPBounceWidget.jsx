@@ -8,7 +8,7 @@ import { validChains, bounceTo, LPAddresses, VaultAddresses, chainDomainID, GOER
 
 import { BOUNCE_ADDRESS, BOUNCE_ABI, BOUNCE_CONSTANTS_ADDRESS, BOUNCE_CONSTANTS_ABI, BOUNCE_RECEIVER_ADDRESS } from "../config";
 
-const BounceWidget = () => {
+const LPBounceWidget = () => {
     const [contract, setContract] = useState();
     const [bounceContract, setBounceContract] = useState();
     const [signer, setSigner] = useState();
@@ -68,44 +68,12 @@ const BounceWidget = () => {
         }
     }
 
-    // helper function to populate all the protocols to be bounced into
-    async function protocols() {
-        const ProtocolAddresses = [];
-
-        const addresses = await contract.getAllProtocols();
-        const names = await contract.getProtocolNames();
-        for (let i = 0; i < names.length; i++) {
-            ProtocolAddresses.push({
-                type: names[i],
-                key: addresses[i],
-            });
-        }
-
-        setUseAddress(ProtocolAddresses);
-    }
-
     // helper function to populate all the LPs to be bounced into
     async function lps() {
         const ProtocolAddresses = [];
 
         const addresses = await contract.getAllLPs();
         const names = await contract.getLPNames();
-        for (let i = 0; i < names.length; i++) {
-            ProtocolAddresses.push({
-                type: names[i],
-                key: addresses[i],
-            });
-        }
-
-        setUseAddress(ProtocolAddresses);
-    }
-
-    // helper function to populate all the vaultss to be bounced into
-    async function vaults() {
-        const ProtocolAddresses = [];
-
-        const addresses = await contract.getAllVaults();
-        const names = await contract.getVaultNames();
         for (let i = 0; i < names.length; i++) {
             ProtocolAddresses.push({
                 type: names[i],
@@ -183,65 +151,6 @@ const BounceWidget = () => {
         setDestToken(data.anchorKey);
     }
 
-    // only able to hardcode domainIDs, dynamically, no go
-{/*
-  *    async function estimateRelayerFee() {
-  *        const srcChainID = window.ethereum.chainId;
-  *
-  *        if (!srcChainID && !targetChain) {
-  *            window.alert("Please select source & target chains");
-  *        } else {
-  *            const srcDomainID = parseInt(chainDomainID[srcChainID]);
-  *            const destDomainID = parseInt(chainDomainID[targetChain]);
-  *
-  *            const nxtpConfig = {
-  *                logLevel: "info",
-  *                signerAddress: signer,
-  *
-  *                chains: {
-  *                    srcDomainID: {
-  *                        providers: [GOERLI_RPC_URL],
-  *                        assets: [
-  *                            {
-  *                                // this has to dynamically update when more support for other tokens is added
-  *                                address: srcToken,
-  *                                name: "TEST",
-  *                                symbol: "TEST",
-  *                                address: "0x7ea6eA49B0b0Ae9c5db7907d139D9Cd3439862a1",
-  *                            },
-  *                        ],
-  *                    },
-  *                    destDomainID: {
-  *                        providers: [MUMBAI_RPC_URL],
-  *                        assets: [
-  *                            {
-  *                                //this has to dynamically update when more support for other tokens is added
-  *
-  *                                address: destToken,
-  *
-  *                                name: "TEST",
-  *                                symbol: "TEST",
-  *                                address: "0xeDb95D8037f769B72AAab41deeC92903A98C9E16",
-  *                            },
-  *                        ],
-  *                    },
-  *                },
-  *            };
-  *
-  *            const { nxtpSdkBase } = await create(nxtpConfig);
-  *
-  *            const params = {
-  *                originDomain: srcDomainID,
-  *                destinationDomain: destDomainID,
-  *            };
-  *
-  *            const relayerFee = await nxtpSdkBase.estimateRelayerFee(params);
-  *            console.log(relayerFee);
-  *            return relayerFee;
-  *        }
-  *    }
-  */}
-
     async function bounce() {
         const receiverAddress = BOUNCE_RECEIVER_ADDRESS[targetChain];
 
@@ -301,10 +210,10 @@ const BounceWidget = () => {
                     <input name="slippage" type="number" value={slippage} onChange={handleSlippageChange} className="mx-5" />
                 </div>
                 <div className="grid grid-rows-1 grid-cols-3 gap-x-5 justify-items-center">
-                    <Radio id="protocol" name="type" label="Protocol" onClick={protocols} />
-                    <Radio id="lp" name="type" label="LP" onClick={lps} />
-                    <Radio id="vault" name="type" label="Vault" onClick={vaults} />
-                </div>
+<button className="bg-black p-3 shadow-lg shadow-slate-300 rounded-lg text-orange-400 mx-6" onClick={lps}>
+                        Ready
+                    </button>
+                                    </div>
                 <div className="my-6 flex items-center">
                     <div className="mx-3">
                         <p>Destination</p>
@@ -326,4 +235,4 @@ const BounceWidget = () => {
     );
 };
 
-export default BounceWidget;
+export default LPBounceWidget;

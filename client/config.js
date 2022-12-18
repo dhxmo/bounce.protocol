@@ -1,3 +1,17 @@
+// chainID => receiver contract deployed on that chain
+const BOUNCE_RECEIVER_ADDRESS = {
+    "0x5": "", // goerli
+    "0x1": "", // mock mainnet
+    "0x13881": "", // mumbai
+    "0x89": "", // mock polygon
+    "0xA4B1": "", // mock arbitrum
+    "0xA": "", // mock optimism
+    "0x7a69": "", // local test
+};
+
+const BOUNCE_ADDRESS = "";
+const BOUNCE_ABI = [];
+
 const BOUNCE_CONSTANTS_ADDRESS = "0x08e1b6f3f49DECcD192318999A373a496E952dd0";
 const BOUNCE_CONSTANTS_ABI = [
     {
@@ -319,4 +333,4 @@ const BOUNCE_CONSTANTS_ABI = [
     },
 ];
 
-export { BOUNCE_CONSTANTS_ADDRESS, BOUNCE_CONSTANTS_ABI };
+export { BOUNCE_ADDRESS, BOUNCE_ABI, BOUNCE_CONSTANTS_ADDRESS, BOUNCE_CONSTANTS_ABI, BOUNCE_RECEIVER_ADDRESS};
